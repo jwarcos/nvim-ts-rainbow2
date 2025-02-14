@@ -95,20 +95,20 @@ end
 
 ---Sets up all the callbacks and performs an initial highlighting
 local function setup_parser(bufnr, parser)
-	parser:for_each_child(function(p, lang)
+	for _, p in ipairs(parser:children()) do	
+		local lang = p:lang() -- Obtendo a linguagem corretamente
+
 		-- Skip languages which are not supported, otherwise we get a
 		-- nil-reference error
 		if not lib.get_query(lang) then return end
+
 		p:register_cbs {
 			on_changedtree = function(changes, tree)
 				-- HACK: As of Neovim v0.9.1 there is no way of unregistering a
-				-- callback, so we use this check to abort
+				-- callback, então usamos esse check para abortar
 				if not lib.buffers[bufnr] then return end
 
-				-- If a line has been moved from another region it will still
-				-- carry with it the extmarks from the old region.  We need to
-				-- clear all extmarks which do not belong to the current
-				-- language
+				-- Limpa extmarks que não pertencem à linguagem atual
 				for _, change in ipairs(changes) do
 					for key, nsid in pairs(lib.nsids) do
 						if key ~= lang then
@@ -118,17 +118,15 @@ local function setup_parser(bufnr, parser)
 				end
 				update_range(bufnr, changes, tree, lang)
 			end,
-			-- New languages can be added into the text at some later time, e.g.
-			-- code snippets in Markdown
+			-- Novas linguagens podem ser adicionadas ao texto depois (ex: Markdown)
 			on_child_added = function(child)
 				setup_parser(bufnr, child)
 			end,
 		}
-	end, true)
+	end
 
 	full_update(bufnr, parser)
 end
-
 
 function M.on_attach(bufnr, settings)
 	local parser = settings.parser
